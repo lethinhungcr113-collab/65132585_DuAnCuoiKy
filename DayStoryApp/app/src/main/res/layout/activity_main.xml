@@ -137,6 +137,7 @@
                             app:tint="#FFFFFF"/>
 
                         <TextView
+                            android:id="@+id/txtNewest"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
 
@@ -184,15 +185,16 @@
                             app:tint="#A08367"/>
 
                         <TextView
+                            android:id="@+id/txtOldest"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
 
                             android:layout_marginStart="6dp"
 
                             android:text="Cũ nhất"
-                            android:textColor="#9A7E63"
+                            android:textColor="#DCDEE6"
                             android:textSize="14sp"
-                            android:textStyle="bold"/>
+                            android:textStyle="bold" />
 
                     </LinearLayout>
 
