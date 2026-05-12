@@ -3,8 +3,10 @@ package ltn.daystory;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -12,29 +14,31 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 public class AddStoryActivity extends AppCompatActivity {
 
+    // Bộ quản lý kết quả trả về từ Camera và Thư viện
     private ActivityResultLauncher<Intent> boChupAnh;
+    private ActivityResultLauncher<Intent> boChonAnh;
 
     private ImageView imgSelected;
     private EditText edtContent;
     private MaterialButton btnSave;
+    private View layoutUploadInfo;
 
     private Bitmap bitmapAnhChup = null;
-
     private boolean isEditMode = false;
-
-    // ID của document Firestore
     private String documentId = "";
 
     @Override
@@ -43,186 +47,150 @@ public class AddStoryActivity extends AppCompatActivity {
         setContentView(R.layout.addstory_activity);
 
         anhXaView();
-        setupCameraLauncher();
+        setupLaunchers(); // Thiết lập bộ xử lý ảnh
         setupClickEvents();
         kiemTraCheDoSua();
     }
 
     private void anhXaView() {
-
         imgSelected = findViewById(R.id.imgSelected);
         edtContent = findViewById(R.id.edtContent);
         btnSave = findViewById(R.id.btnSave);
-
+        layoutUploadInfo = findViewById(R.id.layoutUploadInfo);
         ImageView btnBack = findViewById(R.id.btnBack);
 
         btnBack.setOnClickListener(v -> finish());
     }
 
-    private void setupCameraLauncher() {
-
+    private void setupLaunchers() {
+        // 1. Xử lý sau khi CHỤP ẢNH xong
         boChupAnh = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 ketQua -> {
+                    if (ketQua.getResultCode() == RESULT_OK && ketQua.getData() != null) {
+                        Bundle extras = ketQua.getData().getExtras();
+                        if (extras != null) {
+                            bitmapAnhChup = (Bitmap) extras.get("data");
+                            hienThiAnhDaChon();
+                        }
+                    }
+                }
+        );
 
-                    if (ketQua.getResultCode() == RESULT_OK
-                            && ketQua.getData() != null
-                            && ketQua.getData().getExtras() != null) {
+        // 2. Xử lý CHỌN ẢNH TỪ THƯ VIỆN
+        boChonAnh = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                ketQua -> {
+                    if (ketQua.getResultCode() == RESULT_OK && ketQua.getData() != null) {
+                        Uri imageUri = ketQua.getData().getData();
+                        try {
+                            InputStream inputStream = getContentResolver().openInputStream(imageUri);
 
-                        bitmapAnhChup =
-                                (Bitmap) ketQua.getData()
-                                        .getExtras()
-                                        .get("data");
+                            BitmapFactory.Options options = new BitmapFactory.Options();
+                            options.inSampleSize = 2; 
 
-                        if (bitmapAnhChup != null) {
-                            imgSelected.setVisibility(View.VISIBLE);
-                            imgSelected.setImageBitmap(bitmapAnhChup);
+                            bitmapAnhChup = BitmapFactory.decodeStream(inputStream, null, options);
 
-                            View layoutUploadInfo = findViewById(R.id.layoutUploadInfo);
-                            if (layoutUploadInfo != null) {
-                                layoutUploadInfo.setVisibility(View.GONE);
+                            if (bitmapAnhChup != null) {
+                                hienThiAnhDaChon();
                             }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Toast.makeText(this, "Lỗi đọc ảnh!", Toast.LENGTH_SHORT).show();
                         }
                     }
                 }
         );
     }
 
+    private void hienThiAnhDaChon() {
+        if (bitmapAnhChup != null) {
+            imgSelected.setVisibility(View.VISIBLE);
+            imgSelected.setImageBitmap(bitmapAnhChup);
+            if (layoutUploadInfo != null) {
+                layoutUploadInfo.setVisibility(View.GONE);
+            }
+        }
+    }
 
     private void setupClickEvents() {
+        // Khi bấm vào khung ảnh -> Hiện Dialog lựa chọn
+        View.OnClickListener selectImageListener = v -> showImageSelectionDialog();
+        findViewById(R.id.cardImage).setOnClickListener(selectImageListener);
+        imgSelected.setOnClickListener(selectImageListener);
 
-        // Click card ảnh để mở camera
-        findViewById(R.id.cardImage).setOnClickListener(v -> moCamera());
-
-        imgSelected.setOnClickListener(v -> moCamera());
-
-        // Nút lưu
+        // Nút lưu dữ liệu
         btnSave.setOnClickListener(v -> {
-
             String noiDung = edtContent.getText().toString().trim();
 
-            // Kiểm tra ảnh
             if (bitmapAnhChup == null) {
-
-                Toast.makeText(
-                        this,
-                        "Vui lòng thêm ảnh trước!",
-                        Toast.LENGTH_SHORT
-                ).show();
-
+                Toast.makeText(this, "Vui lòng thêm ảnh trước!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Kiểm tra nội dung
             if (noiDung.isEmpty()) {
-
-                Toast.makeText(
-                        this,
-                        "Hãy viết gì đó cho hôm nay nhé!",
-                        Toast.LENGTH_SHORT
-                ).show();
-
+                Toast.makeText(this, "Hãy viết gì đó cho hôm nay nhé!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Disable nút
             btnSave.setEnabled(false);
-
-            if (isEditMode) {
-                btnSave.setText("Đang cập nhật...");
-            } else {
-                btnSave.setText("Đang lưu...");
-            }
-
-            // Lưu dữ liệu
+            btnSave.setText(isEditMode ? "Đang cập nhật..." : "Đang lưu...");
             luuDuLieuLenFirebase();
         });
     }
 
-
-    private void moCamera() {
-
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        boChupAnh.launch(intent);
+    private void showImageSelectionDialog() {
+        String[] options = {"Chụp ảnh mới", "Chọn từ thư viện", "Hủy"};
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Thêm ảnh vào nhật ký");
+        builder.setItems(options, (dialog, which) -> {
+            if (which == 0) {
+                // Chụp ảnh
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                boChupAnh.launch(intent);
+            } else if (which == 1) {
+                // Chọn từ thư viện
+                Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                boChonAnh.launch(intent);
+            } else {
+                dialog.dismiss();
+            }
+        });
+        builder.show();
     }
 
     private void kiemTraCheDoSua() {
-
         Intent intent = getIntent();
-
         if (intent.hasExtra("isEdit")) {
-
             isEditMode = true;
-
-            // Lấy documentId
             documentId = intent.getStringExtra("documentId");
-
             String oldContent = intent.getStringExtra("oldContent");
             String oldImage = intent.getStringExtra("oldImage");
 
-            // Set nội dung cũ
             edtContent.setText(oldContent);
 
-            // Set ảnh cũ
             if (oldImage != null && !oldImage.isEmpty()) {
-
-                byte[] decodedString =
-                        android.util.Base64.decode(
-                                oldImage,
-                                android.util.Base64.DEFAULT
-                        );
-
-                bitmapAnhChup = BitmapFactory.decodeByteArray(
-                        decodedString,
-                        0,
-                        decodedString.length
-                );
-
-                if (bitmapAnhChup != null) {
-                    imgSelected.setVisibility(View.VISIBLE);
-                    imgSelected.setImageBitmap(bitmapAnhChup);
-
-                    // Dán vào đây để ẩn chữ khi load bài cũ lên để sửa
-                    View layoutUploadInfo = findViewById(R.id.layoutUploadInfo);
-                    if (layoutUploadInfo != null) {
-                        layoutUploadInfo.setVisibility(View.GONE);
-                    }
-                }
+                byte[] decodedString = Base64.decode(oldImage, Base64.DEFAULT);
+                bitmapAnhChup = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                hienThiAnhDaChon();
             }
-
-            btnSave.setText("Cập nhật nhật ký");
+            btnSave.setText("CẬP NHẬT NHẬT KÝ");
         }
     }
 
     private void luuDuLieuLenFirebase() {
-
         String text = edtContent.getText().toString().trim();
-
-        // Mã hóa ảnh
         String anhMaHoa = "";
 
         if (bitmapAnhChup != null) {
-
-            ByteArrayOutputStream baos =
-                    new ByteArrayOutputStream();
-
-            bitmapAnhChup.compress(
-                    Bitmap.CompressFormat.JPEG,
-                    60,
-                    baos
-            );
-
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            // Nén ảnh xuống 60% để tiết kiệm dung lượng Firebase
+            bitmapAnhChup.compress(Bitmap.CompressFormat.JPEG, 60, baos);
             byte[] b = baos.toByteArray();
-
-            anhMaHoa = android.util.Base64.encodeToString(
-                    b,
-                    android.util.Base64.DEFAULT
-            );
+            anhMaHoa = Base64.encodeToString(b, Base64.DEFAULT);
         }
 
-        // Object nhật ký
         Map<String, Object> nhatKy = new HashMap<>();
-
         nhatKy.put("noiDung", text);
         nhatKy.put("duongDanAnh", anhMaHoa);
         nhatKy.put("ngayThang", new Date().toString());
@@ -230,77 +198,32 @@ public class AddStoryActivity extends AppCompatActivity {
         FirebaseFirestore firestore = FirebaseFirestore.getInstance();
 
         if (isEditMode && !documentId.isEmpty()) {
-
-            firestore.collection("DanhSachNhatKy")
-                    .document(documentId)
+            firestore.collection("DanhSachNhatKy").document(documentId)
                     .set(nhatKy)
-
                     .addOnSuccessListener(unused -> {
-
-                        Toast.makeText(
-                                AddStoryActivity.this,
-                                "Cập nhật thành công!",
-                                Toast.LENGTH_SHORT
-                        ).show();
-
+                        Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
                         quayVeMain();
                     })
-
-                    .addOnFailureListener(e -> {
-
-                        btnSave.setEnabled(true);
-                        btnSave.setText("Cập nhật nhật ký");
-
-                        Toast.makeText(
-                                AddStoryActivity.this,
-                                "Lỗi cập nhật dữ liệu!",
-                                Toast.LENGTH_SHORT
-                        ).show();
-                    });
-        }
-
-        else {
-
-            firestore.collection("DanhSachNhatKy")
-                    .add(nhatKy)
-
+                    .addOnFailureListener(e -> resetSaveButton());
+        } else {
+            firestore.collection("DanhSachNhatKy").add(nhatKy)
                     .addOnSuccessListener(documentReference -> {
-
-                        Toast.makeText(
-                                AddStoryActivity.this,
-                                "Đã lưu nhật ký!",
-                                Toast.LENGTH_SHORT
-                        ).show();
-
+                        Toast.makeText(this, "Đã lưu nhật ký!", Toast.LENGTH_SHORT).show();
                         quayVeMain();
                     })
-
-                    .addOnFailureListener(e -> {
-
-                        btnSave.setEnabled(true);
-                        btnSave.setText("LƯU VÀO NHẬT KÝ");
-
-                        Toast.makeText(
-                                AddStoryActivity.this,
-                                "Lỗi lưu dữ liệu!",
-                                Toast.LENGTH_SHORT
-                        ).show();
-                    });
+                    .addOnFailureListener(e -> resetSaveButton());
         }
     }
 
+    private void resetSaveButton() {
+        btnSave.setEnabled(true);
+        btnSave.setText(isEditMode ? "CẬP NHẬT NHẬT KÝ" : "LƯU VÀO NHẬT KÝ");
+        Toast.makeText(this, "Lỗi kết nối Firebase!", Toast.LENGTH_SHORT).show();
+    }
+
     private void quayVeMain() {
-
-        Intent intent = new Intent(
-                AddStoryActivity.this,
-                MainActivity.class
-        );
-
-        intent.addFlags(
-                Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        | Intent.FLAG_ACTIVITY_SINGLE_TOP
-        );
-
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);
         finish();
     }
