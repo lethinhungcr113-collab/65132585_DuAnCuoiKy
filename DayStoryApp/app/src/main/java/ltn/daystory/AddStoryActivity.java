@@ -87,7 +87,7 @@ public class AddStoryActivity extends AppCompatActivity {
                             InputStream inputStream = getContentResolver().openInputStream(imageUri);
 
                             BitmapFactory.Options options = new BitmapFactory.Options();
-                            options.inSampleSize = 2; 
+                            options.inSampleSize = 2;
 
                             bitmapAnhChup = BitmapFactory.decodeStream(inputStream, null, options);
 
