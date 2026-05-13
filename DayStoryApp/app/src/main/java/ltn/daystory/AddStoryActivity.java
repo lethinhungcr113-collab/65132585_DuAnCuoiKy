@@ -118,17 +118,38 @@ public class AddStoryActivity extends AppCompatActivity {
     }
 
     private void showImageSelectionDialog() {
-        String[] options = {"📸 Chụp ảnh mới", "🖼️ Chọn từ thư viện", "Hủy"};
+
+        String[] options = {"📸  Chụp ảnh mới", "🖼️  Chọn từ thư viện", "❌  Hủy"};
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
         builder.setTitle("Thêm ảnh vào nhật ký");
+
         builder.setItems(options, (dialog, which) -> {
+
             if (which == 0) {
+
                 boChupAnh.launch(new Intent(MediaStore.ACTION_IMAGE_CAPTURE));
+
             } else if (which == 1) {
-                boChonAnh.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI));
-            } else dialog.dismiss();
+
+                boChonAnh.launch(
+                        new Intent(
+                                Intent.ACTION_PICK,
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                        )
+                );
+
+            } else {
+                dialog.dismiss();
+            }
         });
-        builder.show();
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_5);
+        }
     }
 
     private void kiemTraCheDoSua() {
@@ -152,14 +173,14 @@ public class AddStoryActivity extends AppCompatActivity {
         String anhMaHoa = "";
 
         if (bitmapAnhChup != null) {
-            // 1. Giảm kích thước ảnh xuống 
+            // 1. Giảm kích thước ảnh xuống
             int maxWidth = 800;
             int maxHeight = (bitmapAnhChup.getHeight() * maxWidth) / bitmapAnhChup.getWidth();
             Bitmap bitmapNen = Bitmap.createScaledBitmap(bitmapAnhChup, maxWidth, maxHeight, true);
 
             // 2. Nén chất lượng ảnh
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmapNen.compress(Bitmap.CompressFormat.JPEG, 60, baos); // Nén chất lượng 60%
+            bitmapNen.compress(Bitmap.CompressFormat.JPEG, 85, baos); // Nén chất lượng 85%
             byte[] imageBytes = baos.toByteArray();
 
             anhMaHoa = Base64.encodeToString(imageBytes, Base64.DEFAULT);
@@ -202,4 +223,5 @@ public class AddStoryActivity extends AppCompatActivity {
         startActivity(intent);
         finish();
     }
+
 }

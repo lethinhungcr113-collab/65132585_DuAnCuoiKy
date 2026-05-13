@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Bo góc -->
+    <corners android:radius="35dp"/>
+
+    <!-- Gradient kem cam vàng sáng -->
+    <gradient
+        android:angle="0"
+        android:startColor="#FFF8F1"
+        android:centerColor="#FFEEDF"
+        android:endColor="#FFD8B5"/>
+
+</shape>

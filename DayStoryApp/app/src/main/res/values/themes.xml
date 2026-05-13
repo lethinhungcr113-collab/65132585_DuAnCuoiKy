@@ -9,4 +9,6 @@
     </style>
 
     <style name="Theme.DayStory" parent="Base.Theme.DayStory" />
+
+
 </resources>

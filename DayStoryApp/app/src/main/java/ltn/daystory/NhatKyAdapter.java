@@ -51,19 +51,15 @@ public class NhatKyAdapter extends RecyclerView.Adapter<NhatKyAdapter.NhatKyView
         // 1. NỘI DUNG
         holder.txtNoiDung.setText(nhatKy.getNoiDung());
 
-        // 2. XỬ LÝ NGÀY THÁNG (Đã sửa để hỗ trợ sắp xếp chuẩn)
+        // 2. XỬ LÝ NGÀY THÁNG
         try {
             Object objNgay = nhatKy.getNgayThang();
-            // Nhung có thể dùng "dd/MM/yyyy" nếu không muốn hiện giờ,
-            // nhưng để test sắp xếp thì nên để HH:mm
             SimpleDateFormat displayFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
 
             if (objNgay instanceof com.google.firebase.Timestamp) {
-                // KIỂU MỚI: Dùng Timestamp của Firebase (Sắp xếp cực chuẩn)
                 Date date = ((com.google.firebase.Timestamp) objNgay).toDate();
                 holder.txtNgay.setText(displayFormat.format(date));
             } else if (objNgay instanceof String) {
-                // KIỂU CŨ: Nếu trước đó lỡ lưu là String
                 holder.txtNgay.setText(objNgay.toString());
             } else {
                 holder.txtNgay.setText("Vừa xong");
@@ -86,8 +82,8 @@ public class NhatKyAdapter extends RecyclerView.Adapter<NhatKyAdapter.NhatKyView
             holder.imgNhatKy.setImageResource(R.drawable.ic_launcher_background);
         }
 
-        // 4. CHỌN EMOJI (LONG CLICK)
-        holder.layoutMood.setOnLongClickListener(v -> {
+        // 4. CHỌN EMOJI
+        holder.layoutMood.setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(context);
             LinearLayout layout = new LinearLayout(context);
             layout.setOrientation(LinearLayout.HORIZONTAL);
@@ -97,7 +93,7 @@ public class NhatKyAdapter extends RecyclerView.Adapter<NhatKyAdapter.NhatKyView
             bg.setCornerRadius(50f);
             layout.setBackground(bg);
 
-            String[] emotions = {"😊", "🥰", "😭", "😴", "😡", "😎", "✨"};
+            String[] emotions = {"😊", "🥰", "😭", "😴", "😡", "😎","✨"};
             final AlertDialog[] dialogHolder = new AlertDialog[1];
 
             for (String emoji : emotions) {
@@ -122,7 +118,7 @@ public class NhatKyAdapter extends RecyclerView.Adapter<NhatKyAdapter.NhatKyView
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
             }
-            return true;
+
         });
 
         String strNgayHienThi = holder.txtNgay.getText().toString();
@@ -154,17 +150,28 @@ public class NhatKyAdapter extends RecyclerView.Adapter<NhatKyAdapter.NhatKyView
             int currentPosition = holder.getAdapterPosition();
             if (currentPosition == RecyclerView.NO_POSITION) return;
 
-            new AlertDialog.Builder(context)
+            AlertDialog dialog = new AlertDialog.Builder(context)
                     .setTitle("Xóa nhật ký")
                     .setMessage("Bạn có chắc muốn xóa nhật ký này không?")
-                    .setPositiveButton("Xóa", (dialog, which) -> {
-                        FirebaseFirestore.getInstance().collection("DanhSachNhatKy")
-                                .document(nhatKy.getDocumentId()).delete()
+                    .setPositiveButton("Xóa", (d, which) -> {
+
+                        FirebaseFirestore.getInstance()
+                                .collection("DanhSachNhatKy")
+                                .document(nhatKy.getDocumentId())
+                                .delete()
                                 .addOnSuccessListener(unused -> {
                                     Toast.makeText(context, "Đã xóa nhật ký", Toast.LENGTH_SHORT).show();
                                 });
+
                     })
-                    .setNegativeButton("Hủy", null).show();
+                    .setNegativeButton("Hủy", null)
+                    .create();
+
+            dialog.show();
+
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_5);
+            }
         });
     }
 

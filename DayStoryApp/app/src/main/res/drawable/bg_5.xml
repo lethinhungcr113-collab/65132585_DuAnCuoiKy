@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Bo góc -->
+    <corners android:radius="35dp"/>
+
+    <solid android:color="#FFF8F1"/>
+
+
+    <stroke
+        android:width="3dp"
+        android:color="#F1D8BE"/>
+
+</shape>
